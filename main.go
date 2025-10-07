@@ -2,103 +2,121 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
-
-	//"sort"
-	"bufio"
+	"sort"
 	"strings"
 	"unicode"
 )
 
-// TextStats хранит всю статистику по тексту
 type TextStats struct {
-	charCount  int
-	wordCount  int
-	lineCount  int
-	spaceCount int
+	lineCount   int
+	wordCount   int
+	charCount   int
+	letterCount int
+	spaceCount  int
+	wordFreq    map[string]int
+}
+
+type WordStat struct {
+	Word  int
+	Count int
 }
 
 func main() {
-	//1. Проверить, что имя файла было передано
+	fmt.Println("Аргументы командной строки")
+	fmt.Println(os.Args)
+
 	if len(os.Args) != 2 {
-		fmt.Println("Введите название файла, команда: go run main.go <название файла>")
-		os.Exit(1)
+		fmt.Println("Пожалуйста, укажите путь к файлу")
+		return
 	}
-	filename := os.Args[1]
 
-	//2. Анализировать файл
-	stats, err := analyzeFile(filename)
+	//Получаем путь к файлу
+	filePath := os.Args[1]
+	fmt.Println("Анализирую файл:", filePath)
+
+	//Получить содержимое файла
+	content, err := os.ReadFile(filePath)
 	if err != nil {
-		fmt.Println("Ошибка анализа файла:", err)
-		os.Exit(1)
+		//Если есть ошибка = выводим ее и завершаем программу
+		log.Fatal(err)
 	}
 
-	//3. Вывести основную статистику
-	printStats(stats, filename)
+	//Вывести содержимое файла
+	fmt.Println("Содержимое файла:")
+	fmt.Println(content)
+
+	//Преобразовать срез байт в строку
+	textContent := string(content)
+	fmt.Println("Содержимое файла в виде текста:")
+	fmt.Println(textContent)
+
+	//Анализируем текс с помощью вункции
+	stats := analizeText(textContent)
+
+	//Смотрим результаты анализа
+	printStats(stats)
 }
 
-// analyzeFile читает файл по указанному пути
-// и возвращает структуру со статистикой
-func analyzeFile(fileName string) (TextStats, error) {
-	//Открыть файл для чтения
-	file, err := os.Open(fileName)
-	if err != nil {
-		return TextStats{}, err
-	}
-	defer file.Close() //Гарантируем закрытие файла
+func analizeText(content string) TextStats {
+	var stats TextStats
 
-	//Инициализируем структуру для хранения статистики
-	stats := TextStats{}
-
-	//Создать сканер для чтения файла по словам
-	scanner := bufio.NewScanner(file)
-
-	scanner.Split(bufio.ScanWords)
-	//Читать файл слово за словом
-	for scanner.Scan() {
-		word := scanner.Text()
-		stats.wordCount++
-
-		cleanedWord := strings.ToLower(word)
-		cleanedWord = strings.TrimFunc(cleanedWord, func(r rune) bool {
-			return !unicode.IsLetter(r) && !unicode.IsNumber(r)
-		})
+	//Проверить на пустой файл
+	if content == "" {
+		return stats //Возвращаем пустую структуру
 	}
 
-	//Переоткрыть файл
-	file.Seek(0, 0)
-	lineScanner := bufio.NewScanner(file)
-	for lineScanner.Scan() {
-		stats.lineCount++
-		stats.charCount += len(lineScanner.Text())
-		//Считать пробелы в строке
-		for _, char := range lineScanner.Text() {
-			if unicode.IsSpace(char) {
-				stats.spaceCount++
-			}
+	//Посчитать символы
+	stats.charCount = len(content)
+
+	//Посчитать строки
+	stats.letterCount = strings.Count(content, "/n") + 1
+
+	//Посчитать слова
+	words := strings.Fields(content)
+	for _, word := range words {
+		if len(word) > 0 {
+			stats.wordCount++
+			stats.wordFreq[word]++
 		}
 	}
 
-	stats.charCount += stats.lineCount
-
-	//Проверить на ошибки во время сканирования
-	if err := scanner.Err(); err != nil {
-		return TextStats{}, err
+	//Посчитать количество букв и пробельных символов
+	for _, r := range content {
+		if unicode.IsLetter(r) {
+			stats.letterCount++
+		}
+		if unicode.IsSpace(r) {
+			stats.spaceCount++
+		}
 	}
-	if err := lineScanner.Err(); err != nil {
-		return TextStats{}, err
+
+	return stats
+}
+
+func getTopWords(freqMap map[string]int, topN int) []WordStat {
+	var WordStats []WordStat
+	for word, count := range freqMap {
+		WordStats = append(WordStats, WordStat{Word: word, Count: count})
 	}
 
-	return stats, nil
+	sort.Slice(WordStats, func(i, j int) bool {
+		return WordStats[i].Count > WordStats[j].Count
+	})
+
+	if len(WordStats) < topN {
+		return WordStats
+	}
 
 }
 
-// printStats выводит общую статистику в консоль
 // Красиво выводим статистику на экран
-func printStats(stats TextStats, filename string) {
-	fmt.Printf("---Анализ файла ---%s\n", filename)
+func printStats(stats TextStats) {
+	fmt.Println("---Анализ текста---")
 	fmt.Printf("Количество строк:                %d\n", stats.lineCount)
 	fmt.Printf("Количество слов:                 %d\n", stats.wordCount)
 	fmt.Printf("Количество символов:             %d\n", stats.charCount)
+	fmt.Printf("Количество букв:                 %d\n", stats.letterCount)
 	fmt.Printf("Количество пробельных символолв: %d\n", stats.spaceCount)
 }
