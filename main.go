@@ -111,7 +111,7 @@ func getTopWords(freqMap map[string]int, topN int) []WordStat {
 
 }
 
-// Красиво выводим статистику на экран
+// Красиво выводим статистику на экраны
 func printStats(stats TextStats) {
 	fmt.Println("---Анализ текста---")
 	fmt.Printf("Количество строк:                %d\n", stats.lineCount)
@@ -120,3 +120,5 @@ func printStats(stats TextStats) {
 	fmt.Printf("Количество букв:                 %d\n", stats.letterCount)
 	fmt.Printf("Количество пробельных символолв: %d\n", stats.spaceCount)
 }
+
+// Подключил гит на хате
